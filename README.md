@@ -76,7 +76,12 @@ classroom dataset collected for the final project. A rendered human-written
 release is also available on Hugging Face:
 [deepcopy/MathWriting-human](https://huggingface.co/datasets/deepcopy/MathWriting-human).
 
-The main real classroom dataset contains:
+The main real classroom dataset was self-collected from handwritten calculus
+expressions contributed by 180 undergraduate students at FPT University,
+Ho Chi Minh City campus. Personal identifiers were not included in the released
+metadata.
+
+The released real classroom dataset contains:
 
 ```text
 train:       1103 samples
