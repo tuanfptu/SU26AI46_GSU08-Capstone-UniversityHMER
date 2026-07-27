@@ -1,0 +1,32 @@
+--extra-index-url https://download.pytorch.org/whl/cu118
+
+# Core
+setuptools==70.3.0
+numpy==1.24.4
+Pillow==9.5.0
+PyYAML==6.0.1
+tqdm
+editdistance==0.6.2
+wandb==0.17.9
+
+# TAMER / PyTorch Lightning runtime
+torch==2.0.1+cu118
+torchvision==0.15.2+cu118
+pytorch-lightning==1.9.5
+torchmetrics==0.11.4
+einops==0.6.1
+jsonargparse[signatures]==4.27.7
+opencv-python-headless==4.8.1.78
+typer==0.9.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# Uni-MuMER / VLM LoRA runtime
+accelerate
+huggingface_hub[cli]
+pandas
+peft
+transformers>=5.0.0
+
+# Optional: install Unsloth separately according to the target CUDA/PyTorch environment.
+# See: https://github.com/unslothai/unsloth

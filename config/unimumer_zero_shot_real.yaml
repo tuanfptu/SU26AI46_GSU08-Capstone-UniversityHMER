@@ -1,0 +1,29 @@
+model_name: phxember/Uni-MuMER-Qwen3.5-2B
+output_dir: outputs/unimumer_zero_shot
+prompt: '<|im_start|>system
+
+  You are a mathematical OCR system. Return only LaTeX, without explanation.<|im_end|>
+
+  <|im_start|>user
+
+  <|vision_start|><|image_pad|><|vision_end|>Convert the mathematical formula in this
+  image to LaTeX format. Return only the LaTeX expression.<|im_end|>
+
+  <|im_start|>assistant
+
+  '
+data:
+  validation_manifest: data/real/real_classroom_dataset_manual_removed/real_validation.csv
+  test_manifest: data/real/real_classroom_dataset_manual_removed/real_blind_test.csv
+  data_root: data/real/real_classroom_dataset_manual_removed
+generation:
+  max_new_tokens: 256
+  do_sample: false
+  num_beams: 1
+  repetition_penalty: 1.05
+eval:
+  normalize_latex: true
+  save_predictions: true
+use_chat_template: true
+system_prompt: You are a helpful assistant.
+user_prompt: Convert the mathematical formula in this image to LaTeX format.

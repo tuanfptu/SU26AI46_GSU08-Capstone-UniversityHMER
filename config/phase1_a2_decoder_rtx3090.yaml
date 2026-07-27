@@ -1,0 +1,67 @@
+seed: 7
+pretrained_checkpoint: lightning_logs/version_3/checkpoints/epoch=55-step=175503-val_ExpRate=0.6954.ckpt
+output_dir: outputs/phase1_a2_decoder_seed7
+auto_calibrate_hme_baseline: false
+
+selection:
+  monitor: val_university_ExpRate
+  mode: max
+  save_top_k: 3
+
+wandb:
+  enabled: true
+  project: University-TAMER-Adapters
+  name: phase1-a2-decoder-seed7
+  id: phase1-a2-decoder-seed7
+
+performance:
+  allow_tf32: true
+  float32_matmul_precision: high
+
+trainer:
+  gpus: 1
+  max_epochs: 20
+  accumulate_grad_batches: 2
+  gradient_clip_val: 5.0
+  precision: 16
+  deterministic: warn
+  benchmark: false
+  check_val_every_n_epoch: 1
+  log_every_n_steps: 10
+  early_stopping_patience: 4
+  early_stopping_min_delta: 0.002
+
+model_overrides:
+  use_fusion: true
+  use_encoder_adapter: false
+  use_decoder_adapter: true
+  adapter_bottleneck_dim: 64
+  adapter_dropout: 0.10
+  adapter_gate_init_bias: -2.0
+  learning_rate: 0.00005
+  patience: 4
+  weight_decay: 0.0001
+  freeze_encoder_epochs: 2
+  hme_baseline_exprate: 0.793666660785675
+  max_hme_drop: 0.02
+  retention_penalty: 10.0
+  beam_size: 10
+  prediction_output_dir: outputs/phase1_a2_decoder_seed7/predictions
+
+data:
+  dictionary: data/HME100k/dictionary.txt
+  university_train_manifest: data/university/splits/train_clean.csv
+  university_val_manifest: data/university/splits/validation_fixed.csv
+  hme_replay_manifest: data/hme_cache/replay.csv
+  hme_val_manifest: data/hme_cache/validation.csv
+  university_data_root: data/university
+  hme_cache_root: data/hme_cache
+  background_dir: data/paper_backgrounds_processed/train
+  train_batch_size: 16
+  eval_batch_size: 4
+  replay_ratio: 0.40
+  dynamic_augmentation: true
+  num_workers: 8
+  persistent_workers: true
+  prefetch_factor: 2
+  seed: 7

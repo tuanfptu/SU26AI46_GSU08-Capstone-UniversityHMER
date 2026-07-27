@@ -1,0 +1,70 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environments
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Training logs and trackers
+*.log
+wandb/
+lightning_logs/
+runs/
+tensorboard/
+
+# Runtime/generated cache
+unsloth_compiled_cache/
+.cache/
+cache/
+__pycache__/
+
+# Large datasets and checkpoints
+data/**
+example_data/**
+!example_data/README.md
+!example_data/.gitkeep
+
+outputs/**
+!outputs/README.md
+!outputs/.gitkeep
+
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.bin
+*.pkl
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.rar
+
+# Generated reports / local analysis
+*.docx
+*.xlsx
+*.pptx
+error_analysis/
+predictions/
+metrics/
+
+# Keep source/config/docs only
+*.bak
+*.bak_*

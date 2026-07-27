@@ -1,0 +1,9 @@
+accelerate
+editdistance
+huggingface_hub[cli]
+pandas
+peft
+pillow
+pyyaml
+tqdm
+transformers>=5.0.0

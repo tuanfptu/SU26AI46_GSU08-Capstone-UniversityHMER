@@ -1,0 +1,68 @@
+model_name: phxember/Uni-MuMER-Qwen3.5-2B
+output_dir: outputs/unimumer_lora_unsloth_real
+prompt: '<|im_start|>system
+
+  You are a helpful assistant.<|im_end|>
+
+  <|im_start|>user
+
+  <|vision_start|><|image_pad|><|vision_end|>Convert the mathematical formula in this
+  image to LaTeX format.<|im_end|>
+
+  <|im_start|>assistant
+
+  '
+data:
+  train_manifest: data/real/real_classroom_dataset_manual_removed/real_train.csv
+  validation_manifest: data/real/real_classroom_dataset_manual_removed/real_validation.csv
+  test_manifest: data/real/real_classroom_dataset_manual_removed/real_blind_test.csv
+  data_root: data/real/real_classroom_dataset_manual_removed
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0
+  target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+  finetune_vision_layers: false
+  finetune_language_layers: true
+  finetune_attention_modules: true
+  finetune_mlp_modules: true
+train:
+  epochs: 20
+  batch_size: 1
+  grad_accum_steps: 8
+  learning_rate: 3.0e-05
+  weight_decay: 0.01
+  warmup_ratio: 0.05
+  lr_scheduler_type: cosine
+  cutoff_len: 2048
+  logging_steps: 10
+  save_steps: 100
+  save_total_limit: 3
+  bf16: true
+  gradient_checkpointing: unsloth
+  seed: 7
+generation:
+  max_new_tokens: 256
+  do_sample: false
+  num_beams: 1
+  repetition_penalty: 1.05
+validation:
+  enabled: true
+  metric: TokenErrorRate
+  mode: min
+  patience: 3
+  min_delta: 0.001
+wandb:
+  enabled: true
+  project: University-TAMER-RealFT
+  run_name: unimumer-unsloth-lora-real-seed7
+use_chat_template: true
+system_prompt: You are a helpful assistant.
+user_prompt: Convert the mathematical formula in this image to LaTeX format.

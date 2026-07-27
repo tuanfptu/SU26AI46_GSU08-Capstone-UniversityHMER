@@ -1,0 +1,25 @@
+name: tamer-rtx3090
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy=1.24
+  - pillow>=9.5
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu118
+      - torch==2.0.1+cu118
+      - torchvision==0.15.2+cu118
+      - setuptools==70.3.0
+      - pytorch-lightning==1.9.5
+      - torchmetrics==0.11.4
+      - einops==0.6.1
+      - editdistance==0.6.2
+      - jsonargparse[signatures]==4.27.7
+      - opencv-python-headless==4.8.1.78
+      - PyYAML==6.0.1
+      - typer==0.9.0
+      - beautifulsoup4==4.12.3
+      - lxml==5.1.0

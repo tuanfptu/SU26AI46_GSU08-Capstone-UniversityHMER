@@ -1,0 +1,60 @@
+seed: 7
+pretrained_checkpoint: lightning_logs/version_3/checkpoints/epoch=55-step=175503-val_ExpRate=0.6954.ckpt
+output_dir: outputs/university_baseline_rtx3090
+auto_calibrate_hme_baseline: true
+
+wandb:
+  enabled: true
+  project: University-TAMER
+  entity: null
+  name: v3-fusion-mathwriting10k-hme40-seed7
+  id: university-tamer-v3-fusion-seed7
+  resume: allow
+  save_dir: outputs/university_baseline_rtx3090
+  log_model: false
+
+performance:
+  allow_tf32: true
+  float32_matmul_precision: high
+
+trainer:
+  gpus: 1
+  max_epochs: 20
+  accumulate_grad_batches: 2
+  gradient_clip_val: 5.0
+  precision: 16
+  deterministic: warn
+  benchmark: false
+  check_val_every_n_epoch: 1
+  log_every_n_steps: 10
+  early_stopping_patience: 4
+
+model_overrides:
+  use_fusion: true
+  learning_rate: 0.00005
+  patience: 4
+  weight_decay: 0.0001
+  freeze_encoder_epochs: 2
+  hme_baseline_exprate: 0.6954
+  max_hme_drop: 0.02
+  retention_penalty: 10.0
+  beam_size: 10
+  prediction_output_dir: outputs/university_baseline_rtx3090/predictions
+
+data:
+  dictionary: data/HME100k/dictionary.txt
+  university_train_manifest: data/university/splits/train_clean.csv
+  university_val_manifest: data/university/splits/validation_fixed.csv
+  hme_replay_manifest: data/hme_cache/replay.csv
+  hme_val_manifest: data/hme_cache/validation.csv
+  university_data_root: data/university
+  hme_cache_root: data/hme_cache
+  background_dir: data/paper_backgrounds_processed/train
+  train_batch_size: 16
+  eval_batch_size: 4
+  replay_ratio: 0.40
+  dynamic_augmentation: true
+  num_workers: 8
+  persistent_workers: true
+  prefetch_factor: 2
+  seed: 7

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "university-hmer"
+version = "0.1.0"
+description = "Research code for handwritten university calculus expression recognition."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "University HMER Project" }
+]
+
+[tool.setuptools.packages.find]
+include = ["tamer*"]
