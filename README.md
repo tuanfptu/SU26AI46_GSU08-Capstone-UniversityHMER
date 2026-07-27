@@ -68,6 +68,14 @@ data/
         `-- real_blind_test.csv
 ```
 
+`University12K` is a curated university-level subset derived from
+[MathWriting 2024](https://arxiv.org/abs/2404.10690), a large-scale
+handwritten mathematical expression recognition dataset. In this project, it is
+used as an intermediate adaptation benchmark before fine-tuning on the real
+classroom dataset collected for the final project. A rendered human-written
+release is also available on Hugging Face:
+[deepcopy/MathWriting-human](https://huggingface.co/datasets/deepcopy/MathWriting-human).
+
 The main real classroom dataset contains:
 
 ```text
@@ -105,7 +113,7 @@ Main preprocessing steps:
 - Normalize labels to the HME100K/TAMER vocabulary when training TAMER.
 - Remove or filter invalid/OOV labels for strict TAMER experiments.
 - Convert and cache HME100K samples when replay is needed.
-- Prepare University12K clean splits with canonical-label-disjoint partitioning.
+- Prepare MathWriting-derived University12K clean splits with canonical-label-disjoint partitioning.
 - Prepare real classroom train/validation/blind-test manifests.
 - Apply paper/background/lighting/perspective augmentation for TAMER training.
 
