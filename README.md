@@ -349,11 +349,6 @@ python eval/unimumer_eval_manifest.py \
 
 - [x] Publish the real classroom dataset after privacy and license checks.
 - [x] Upload the selected TAMER checkpoint and Uni-MuMER LoRA adapter to Hugging Face.
-- [ ] Add a small public sample dataset for smoke testing.
-- [ ] Add a reproducible demo notebook.
-- [ ] Improve robustness to vertically stacked integral/summation bounds.
-- [ ] Expand the real dataset with more writers, layouts, and camera conditions.
-- [ ] Add richer error-analysis visualizations.
 - [x] Package the Android demo and backend deployment instructions in a separate demo repository.
 
 ## 🙏 Acknowledgements
