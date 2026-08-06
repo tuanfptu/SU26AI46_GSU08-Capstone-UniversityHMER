@@ -18,7 +18,17 @@ Two complementary model directions are studied:
    - Fine-tune `phxember/Uni-MuMER-Qwen3.5-2B` with LoRA on the real classroom dataset.
    - Use the VLM as the main robust model for live demo inputs.
 
+TAMER-A3 RealFT is retained as a fast specialist model for research and controlled-domain analysis. The final Android application exposes only **Uni-MuMER LoRA** as the live inference model because it provides stronger practical robustness to unconstrained inputs.
+
 Large datasets, checkpoints, LoRA adapters, logs, and generated outputs are intentionally excluded from this GitHub repository.
+
+## Demo Application
+
+The Android application and FastAPI deployment backend are maintained separately:
+
+[University HMER Demo Application](https://github.com/Will36237/university-handwritten-math-recognition)
+
+The application supports in-app camera capture, gallery import, manual formula cropping, input validation, LaTeX prediction, and mathematical rendering. It was built and demonstrated using Android Studio with an Android emulator.
 
 ## Repository Structure
 
@@ -196,6 +206,24 @@ The main metrics are:
 
 ExpRate is the primary metric. TER is used to measure how close an incorrect prediction is.
 
+## Uni-MuMER Prompt Selection
+
+Three prompts were evaluated with Uni-MuMER zero-shot on the **259-image Real Validation split only**. The Blind Test was not used for prompt selection.
+
+| ID | System prompt | User prompt |
+|---|---|---|
+| **P1 — Helpful Assistant** | `You are a helpful assistant.` | `Convert the mathematical formula in this image to LaTeX format.` |
+| **P2 — Mathematical OCR** | `You are a mathematical OCR system specialized in handwritten formulas.` | `Recognize the mathematical expression in this image and return its LaTeX representation.` |
+| **P3 — LaTeX-only Constrained** | `You transcribe handwritten mathematical expressions into LaTeX. Do not explain your answer.` | `Return only the LaTeX expression shown in the image, without Markdown delimiters or additional text.` |
+
+| Prompt | ExpRate | TER | ValidLaTeX | Latency |
+|---|---:|---:|---:|---:|
+| P1 | 14.29% | **10.27%** | **99.61%** | **1.667 s/img** |
+| P2 | **15.44%** | 13.41% | 99.23% | 1.729 s/img |
+| P3 | 15.06% | 13.47% | 99.23% | 1.713 s/img |
+
+Although P2 achieved the highest ExpRate, its advantage over P1 was only three exact matches among 259 samples. P1 achieved substantially lower TER, higher LaTeX validity, and lower latency. Therefore, **P1 was fixed as the operational prompt** for the matched comparison between Uni-MuMER zero-shot and Uni-MuMER LoRA.
+
 ## Model Zoo
 
 Large model files are not committed to GitHub.
@@ -228,7 +256,7 @@ Recommended external storage:
 | A3 phase1 | 5.02% | 16.88% | - |
 | A0 RealFT | 53.28% | 5.80% | 0.293 s/img |
 | A3 RealFT | 56.37% | 5.45% | 0.299 s/img |
-| Uni-MuMER zero-shot | 14.67% | 13.50% | ~2.09 s/img |
+| Uni-MuMER zero-shot P1 | 14.29% | 10.27% | 1.667 s/img |
 | Uni-MuMER LoRA | 64.48% | 4.62% | ~2.60 s/img |
 
 ### Blind Test
@@ -238,7 +266,7 @@ Recommended external storage:
 | TAMER Original | 4.38% | 22.34% | 0.314 s/img |
 | A0 RealFT | 69.34% | 3.05% | 0.301 s/img |
 | A3 RealFT | 71.17% | 2.92% | 0.306 s/img |
-| Uni-MuMER zero-shot | 23.72% | 7.18% | 1.92 s/img |
+| Uni-MuMER zero-shot P1 | 23.36% | 7.26% | 1.649 s/img |
 | Uni-MuMER LoRA | 74.82% | 3.38% | 2.55 s/img |
 
 ### Pairwise A3 RealFT vs Uni-MuMER LoRA on Blind Test
@@ -257,6 +285,10 @@ Summary:
 - TAMER-A3 RealFT is fast and strong on the collected classroom distribution.
 - Uni-MuMER LoRA is more robust and is selected as the main demo model.
 - The two models expose a practical trade-off between speed and generalization.
+
+### Mini-OOD 20 Diagnostic
+
+Uni-MuMER LoRA with P1 achieved **20/20 exact matches**, **0% TER**, and **100% ValidLaTeX** on Mini-OOD 20. This small set is used only as a post-selection diagnostic; it is not used for prompt selection or checkpoint selection and is not claimed as a general OOD benchmark.
 
 ## Training
 
@@ -315,14 +347,14 @@ python eval/unimumer_eval_manifest.py \
 
 ## ✅ TODO
 
-- [ ] Publish the real classroom dataset after privacy and license checks.
-- [ ] Upload TAMER checkpoints and Uni-MuMER LoRA adapters to external model storage.
+- [x] Publish the real classroom dataset after privacy and license checks.
+- [x] Upload the selected TAMER checkpoint and Uni-MuMER LoRA adapter to Hugging Face.
 - [ ] Add a small public sample dataset for smoke testing.
 - [ ] Add a reproducible demo notebook.
 - [ ] Improve robustness to vertically stacked integral/summation bounds.
 - [ ] Expand the real dataset with more writers, layouts, and camera conditions.
 - [ ] Add richer error-analysis visualizations.
-- [ ] Package the Android demo and backend deployment instructions in a separate demo repository.
+- [x] Package the Android demo and backend deployment instructions in a separate demo repository.
 
 ## 🙏 Acknowledgements
 
