@@ -1,365 +1,360 @@
-﻿# University HMER: Handwritten University Calculus Recognition
+# University HMER
 
-## Description
+**Real-World Handwritten University Calculus Recognition with TAMER Domain Adaptation and Uni-MuMER LoRA**
 
-This repository contains the clean research code for a final-year project on **Handwritten Mathematical Expression Recognition (HMER)** for university-level calculus expressions captured in real classroom conditions.
+[![Dataset](https://img.shields.io/badge/Dataset-Hugging%20Face-yellow)](https://huggingface.co/datasets/tuan3110/University-HMER-RealClassroom)
+[![TAMER-A3](https://img.shields.io/badge/Model-TAMER--A3-blue)](https://huggingface.co/tuan3110/University-HMER-TAMER-A3-RealFT)
+[![Uni--MuMER LoRA](https://img.shields.io/badge/Model-Uni--MuMER%20LoRA-purple)](https://huggingface.co/tuan3110/University-HMER-UniMuMER-LoRA)
+[![Demo](https://img.shields.io/badge/Demo-Android-green)](https://github.com/Will36237/university-handwritten-math-recognition)
 
-The project focuses on handwritten formulas that are more practical and less controlled than standard benchmark images: real paper backgrounds, phone-camera capture, varied lighting, imperfect cropping, and university calculus notation such as fractions, derivatives, logarithms, exponentials, integrals, summations, and nested expressions.
+Research code and reproducibility materials for the FPT University capstone project **SU26AI46_GSU08**.
 
-Two complementary model directions are studied:
+> This public repository contains source code and selected configurations. Large datasets, checkpoints, adapters, predictions, and training logs are stored on Hugging Face or in the university submission package.
 
-1. **TAMER-based specialist HMER models**
-   - Adapt the original TAMER architecture to university calculus data.
-   - Compare adapter variants A0/A1/A2/A3.
-   - Fine-tune on a real classroom dataset.
-   - Analyze the trade-off between speed, domain adaptation, and generalization.
+## Overview
 
-2. **Uni-MuMER LoRA VLM**
-   - Fine-tune `phxember/Uni-MuMER-Qwen3.5-2B` with LoRA on the real classroom dataset.
-   - Use the VLM as the main robust model for live demo inputs.
-
-TAMER-A3 RealFT is retained as a fast specialist model for research and controlled-domain analysis. The final Android application exposes only **Uni-MuMER LoRA** as the live inference model because it provides stronger practical robustness to unconstrained inputs.
-
-Large datasets, checkpoints, LoRA adapters, logs, and generated outputs are intentionally excluded from this GitHub repository.
-
-## Demo Application
-
-The Android application and FastAPI deployment backend are maintained separately:
-
-[University HMER Demo Application](https://github.com/Will36237/university-handwritten-math-recognition)
-
-The application supports in-app camera capture, gallery import, manual formula cropping, input validation, LaTeX prediction, and mathematical rendering. It was built and demonstrated using Android Studio with an Android emulator.
-
-## Repository Structure
+This project studies handwritten mathematical expression recognition (HMER) for university calculus captured under real classroom conditions. It connects three domains:
 
 ```text
-.
-|-- config/              # Selected YAML configs for TAMER, RealFT, Uni-MuMER
-|-- assets/fig/          # Figures for README and reports
-|-- example_data/        # Placeholder only; real datasets are external
-|-- docs/                # Runbooks, requirements, and environment files
-|-- eval/                # TAMER evaluation scripts
-|-- outputs/             # Placeholder only; checkpoints/adapters are external
-|-- preprocess/          # Dataset preprocessing utilities
-|-- scripts/             # Training, evaluation, and server scripts
-|-- tamer/               # TAMER source code and adapter variants
-|-- train/               # TAMER and Uni-MuMER LoRA training entrypoints
-|   |-- train.py
-|   `-- train_university.py
-|-- tests/               # Lightweight tests
+HME100K-pretrained TAMER
+        ↓
+University12K intermediate adaptation
+        ↓
+RealCalculus-1636 classroom adaptation
 ```
 
-| Path | Purpose |
+Two complementary model families are investigated:
+
+- **TAMER-A3 RealFT:** a fast specialist model for the collected classroom distribution.
+- **Uni-MuMER LoRA:** a parameter-efficient vision-language model selected for the live application because it is more robust to unconstrained input.
+
+The goal is not to claim one universally superior model, but to quantify the trade-off between **same-domain accuracy, source retention, inference speed, and practical generalization**.
+
+## Problem / Motivation
+
+Benchmark HMER images are usually tightly cropped and visually controlled. Classroom photographs introduce paper texture, shadows, perspective distortion, imperfect cropping, long expressions, and writer-dependent two-dimensional layouts.
+
+This creates three research gaps:
+
+1. **Benchmark-to-classroom domain gap.** The HME100K-pretrained TAMER baseline reaches only **1.93% ExpRate** on Real Validation.
+2. **Adapter placement in specialist HMER.** There is limited evidence about whether visual, structural, or dual adapters best support TAMER adaptation.
+3. **Accuracy-efficiency trade-off.** A specialist decoder is fast but vocabulary-bound; a VLM is more flexible but substantially slower.
+
+The project asks:
+
+- How much can an intermediate calculus domain reduce the benchmark-to-real gap?
+- Where should bottleneck adapters be inserted in TAMER?
+- How much does real-data fine-tuning improve a frozen classroom Blind Test?
+- What is lost through catastrophic forgetting?
+- When should a fast specialist be preferred over a LoRA-adapted VLM?
+
+## Key Contributions
+
+1. **University12K:** a MathWriting 2024-derived intermediate calculus domain with canonical-label-disjoint splitting.
+2. **RealCalculus-1636:** a privacy-reviewed classroom dataset collected from approximately 180 FPT University HCMC undergraduates.
+3. **A0-A3 adapter ablation:** controlled encoder, decoder, and dual-adapter variants for TAMER.
+4. **Two-stage specialist adaptation:** HME100K → University12K → RealCalculus-1636, including source-retention evaluation.
+5. **Uni-MuMER LoRA adaptation:** only **5,455,872 trainable parameters**, approximately **0.246%** of the base model.
+6. **Controlled evaluation:** fixed Validation/Blind splits, prompt selection without Blind Test access, pairwise comparison, category/severity analysis, and Mini-OOD diagnostic evaluation.
+7. **Deployment analysis:** an empirical account of the speed versus generalization trade-off between TAMER-A3 RealFT and Uni-MuMER LoRA.
+
+## Method
+
+### TAMER adaptation
+
+TAMER combines a DenseNet visual encoder, image/word positional encoding, a Transformer decoder with coverage attention, and a tree-aware module. The project adds a gated residual bottleneck adapter:
+
+```text
+A(x) = x + sigmoid(alpha) × W_up(
+           Dropout(GELU(W_down(LayerNorm(x))))
+       )
+```
+
+The gate initializes the adapter near an identity mapping. The bottleneck limits parameter growth, while dropout regularizes domain adaptation.
+
+| Variant | Encoder adapter | Decoder adapter | Experimental role |
+|---|:---:|:---:|---|
+| **A0** | No | No | Matched no-adapter control |
+| **A1** | Yes | No | Visual-domain adaptation |
+| **A2** | No | Yes | Language/structure adaptation |
+| **A3** | Yes | Yes | Joint visual and structural adaptation |
+
+**Phase 1** initializes from TAMER v3, adapts to University12K, and uses 40% HME100K replay. **RealFT** initializes A0/A3 from their corresponding phase-1 checkpoints and fine-tunes on RealCalculus-1636 with dynamic augmentation and no replay.
+
+### Uni-MuMER LoRA
+
+The VLM branch adapts [`phxember/Uni-MuMER-Qwen3.5-2B`](https://huggingface.co/phxember/Uni-MuMER-Qwen3.5-2B) using LoRA:
+
+- rank `8`, alpha `16`;
+- attention targets: `q_proj`, `k_proj`, `v_proj`, `o_proj`;
+- MLP targets: `gate_proj`, `up_proj`, `down_proj`;
+- frozen vision tower;
+- BF16 and Unsloth gradient checkpointing;
+- greedy generation with a fixed prompt.
+
+LoRA changes the language-side attention and MLP projections while preserving the frozen base weights. Uni-MuMER LoRA is used in the live demo; TAMER-A3 remains a specialist research result.
+
+## Dataset
+
+| Dataset | Purpose | Size / split |
+|---|---|---:|
+| **HME100K** | Source pretraining, phase-1 replay, retention evaluation | Upstream benchmark |
+| **University12K** | Intermediate university-calculus adaptation | MathWriting-derived subset |
+| **RealCalculus-1636** | Real classroom adaptation and evaluation | 1,103 train / 259 validation / 274 blind |
+| **Mini-OOD-20** | Post-selection diagnostic only | 20 images |
+
+RealCalculus-1636 is available at [University-HMER-RealClassroom](https://huggingface.co/datasets/tuan3110/University-HMER-RealClassroom). Personal identifiers are not included in the released metadata.
+
+Preprocessing includes:
+
+- label normalization to the HME100K/TAMER vocabulary;
+- strict filtering of invalid or out-of-vocabulary labels for TAMER;
+- canonical-label-disjoint University12K splits;
+- fixed Real train/validation/blind manifests;
+- paper, lighting, perspective, and background augmentation.
+
+The 274-image Blind Test is frozen and is never used for prompt selection, early stopping, or checkpoint selection.
+
+## Experiments & Baselines
+
+### Baselines
+
+| Baseline | Purpose |
 |---|---|
-| `tamer/` | TAMER architecture, data modules, adapter variants, and training logic. |
-| `train/train_university.py` | Main entry point for University12K phase1 and RealFT TAMER experiments. |
-| `train/unimumer_lora_train_unsloth.py` | Uni-MuMER LoRA training with Unsloth. |
-| `eval/unimumer_eval_manifest.py` | Uni-MuMER zero-shot/LoRA evaluation on manifest splits. |
-| `config/` | Reproducible configs for selected final experiments. |
-| `scripts/` | Server-oriented run scripts and data preparation utilities. |
-| `example_data/` | Dataset placeholder. Actual images/manifests are distributed separately. |
-| `outputs/` | Output placeholder. Checkpoints, adapters, metrics, and predictions are stored externally. |
+| TAMER Original | Measures the HME100K-to-classroom domain gap |
+| A0 phase 1 | Controls for adaptation without adapters |
+| A1 / A2 / A3 phase 1 | Isolates adapter placement |
+| A0 RealFT | Matched real-data control for A3 RealFT |
+| Uni-MuMER zero-shot P1 | Measures LoRA gain with the same base model and prompt |
 
-## 📦 Dataset Preparation
+### Training configuration
 
-Dataset link: [University-HMER-RealClassroom](https://huggingface.co/datasets/tuan3110/University-HMER-RealClassroom)
+| Stage | Optimizer / LR | Effective batch | Stopping and selection |
+|---|---|---:|---|
+| TAMER phase 1 | AdamW + ReduceLROnPlateau, `5e-5` | 32 | max 20 epochs; patience 4; University Validation ExpRate |
+| TAMER RealFT | AdamW + ReduceLROnPlateau, `1e-5` | 16 | max 100 epochs; patience 6; Real Validation ExpRate |
+| Uni-MuMER LoRA | fused AdamW + cosine schedule, `3e-5` | 8 | max 20 epochs; patience 3; Validation TER |
 
-Expected local dataset layout:
+TAMER uses weight decay `1e-4`, gradient clipping `5.0`, mixed precision, and encoder warm-up. LoRA uses weight decay `0.01`, 5% warm-up, BF16, and gradient accumulation of 8.
 
-```text
-data/
-|-- HME100k/
-|-- university/
-`-- real/
-    `-- real_classroom_dataset_manual_removed/
-        |-- images/
-        |-- real_train.csv
-        |-- real_validation.csv
-        `-- real_blind_test.csv
-```
+### Prompt selection
 
-`University12K` is a curated university-level subset derived from
-[MathWriting 2024](https://arxiv.org/abs/2404.10690), a large-scale
-handwritten mathematical expression recognition dataset. In this project, it is
-used as an intermediate adaptation benchmark before fine-tuning on the real
-classroom dataset collected for the final project. A rendered human-written
-release is also available on Hugging Face:
-[deepcopy/MathWriting-human](https://huggingface.co/datasets/deepcopy/MathWriting-human).
-
-The main real classroom dataset was self-collected from handwritten calculus
-expressions contributed by 180 undergraduate students at FPT University,
-Ho Chi Minh City campus. Personal identifiers were not included in the released
-metadata.
-
-The released real classroom dataset contains:
-
-```text
-train:       1103 samples
-validation:  259 samples
-blind test:  274 samples
-total:      1636 images
-```
-
-CSV manifests are expected to contain at least:
-
-```text
-sample_id,image_path,label
-```
-
-Example:
-
-```csv
-sample_id,image_path,label
-real_0001,images/real_0001.png,\int _ { 0 } ^ { 1 } x ^ { 2 } d x
-```
-
-The real classroom dataset is not committed to this repository. It is distributed separately through Hugging Face Datasets:
-
-```text
-https://huggingface.co/datasets/tuan3110/University-HMER-RealClassroom
-```
-
-## Preprocessing
-
-The preprocessing pipeline is designed to reduce the gap between benchmark-style HMER images and real classroom images.
-
-Main preprocessing steps:
-
-- Normalize labels to the HME100K/TAMER vocabulary when training TAMER.
-- Remove or filter invalid/OOV labels for strict TAMER experiments.
-- Convert and cache HME100K samples when replay is needed.
-- Prepare MathWriting-derived University12K clean splits with canonical-label-disjoint partitioning.
-- Prepare real classroom train/validation/blind-test manifests.
-- Apply paper/background/lighting/perspective augmentation for TAMER training.
-
-Useful scripts:
-
-```text
-scripts/prepare_university_data.py
-scripts/prepare_hme_cache.py
-scripts/prepare_paper_backgrounds.py
-scripts/generate_fixed_splits.py
-scripts/preview_augmentation.py
-```
-
-Known dataset limitation:
-
-- The real dataset has limited diversity in operator-bound placement.
-- Many integral and summation bounds are written diagonally or to the right of the operator.
-- Vertically stacked display-style limits are underrepresented.
-- This can limit generalization to display-style mathematical layouts.
-
-## 🏃 Inference
-
-### TAMER inference
-
-TAMER checkpoints are stored externally under `outputs/`.
-
-Typical checkpoint paths:
-
-```text
-outputs/phase1_a3_dual_seed7/checkpoints/
-outputs/real_ft_a3_dual_seed7/checkpoints/
-```
-
-Evaluation/inference scripts:
-
-```bash
-python eval/evaluate_manifest.py \
-  --checkpoint outputs/real_ft_a3_dual_seed7/checkpoints/<checkpoint>.ckpt \
-  --dictionary data/HME100k/dictionary.txt \
-  --manifest data/real/real_classroom_dataset_manual_removed/real_validation.csv \
-  --data-root data/real/real_classroom_dataset_manual_removed \
-  --output outputs/eval_tamer_a3_realft
-```
-
-### Uni-MuMER inference
-
-Uni-MuMER evaluation supports zero-shot and LoRA-adapter inference:
-
-```bash
-python eval/unimumer_eval_manifest.py \
-  --config config/unimumer_zero_shot_real.yaml \
-  --split validation
-```
-
-With LoRA:
-
-```bash
-python eval/unimumer_eval_manifest.py \
-  --config config/unimumer_lora_real_unsloth.yaml \
-  --split validation \
-  --lora-path outputs/unimumer_lora_unsloth_real/best_adapter
-```
-
-## 📏 Evaluation Metrics
-
-The main metrics are:
-
-| Metric | Description |
-|---|---|
-| **ExpRate** | Exact expression recognition rate. A prediction is correct only when the full token sequence matches the ground truth. |
-| **TER** | Token Error Rate, computed from token-level edit distance. |
-| **ValidLaTeX** | Percentage of predictions that can be parsed or rendered as valid LaTeX-like output. |
-| **Latency** | Average inference time per image. |
-| **Pairwise comparison** | Compares which model is correct or closer on the same samples. |
-
-ExpRate is the primary metric. TER is used to measure how close an incorrect prediction is.
-
-## Uni-MuMER Prompt Selection
-
-Three prompts were evaluated with Uni-MuMER zero-shot on the **259-image Real Validation split only**. The Blind Test was not used for prompt selection.
+Three zero-shot prompts were evaluated on the **259-image Validation split only**:
 
 | ID | System prompt | User prompt |
 |---|---|---|
-| **P1 — Helpful Assistant** | `You are a helpful assistant.` | `Convert the mathematical formula in this image to LaTeX format.` |
-| **P2 — Mathematical OCR** | `You are a mathematical OCR system specialized in handwritten formulas.` | `Recognize the mathematical expression in this image and return its LaTeX representation.` |
-| **P3 — LaTeX-only Constrained** | `You transcribe handwritten mathematical expressions into LaTeX. Do not explain your answer.` | `Return only the LaTeX expression shown in the image, without Markdown delimiters or additional text.` |
+| **P1** | `You are a helpful assistant.` | `Convert the mathematical formula in this image to LaTeX format.` |
+| **P2** | `You are a mathematical OCR system specialized in handwritten formulas.` | `Recognize the mathematical expression in this image and return its LaTeX representation.` |
+| **P3** | `You transcribe handwritten mathematical expressions into LaTeX. Do not explain your answer.` | `Return only the LaTeX expression shown in the image, without Markdown delimiters or additional text.` |
 
 | Prompt | ExpRate | TER | ValidLaTeX | Latency |
 |---|---:|---:|---:|---:|
-| P1 | 14.29% | **10.27%** | **99.61%** | **1.667 s/img** |
+| **P1** | 14.29% | **10.27%** | **99.61%** | **1.667 s/img** |
 | P2 | **15.44%** | 13.41% | 99.23% | 1.729 s/img |
 | P3 | 15.06% | 13.47% | 99.23% | 1.713 s/img |
 
-Although P2 achieved the highest ExpRate, its advantage over P1 was only three exact matches among 259 samples. P1 achieved substantially lower TER, higher LaTeX validity, and lower latency. Therefore, **P1 was fixed as the operational prompt** for the matched comparison between Uni-MuMER zero-shot and Uni-MuMER LoRA.
+P2 yields three more exact matches than P1, but P1 has materially lower TER, higher LaTeX validity, and lower latency. P1 is therefore fixed before the matched zero-shot/LoRA comparison.
 
-## Model Zoo
+### Metrics
 
-Large model files are not committed to GitHub.
+- **ExpRate:** exact token-sequence match; higher is better.
+- **TER:** token edit distance divided by the ground-truth token count; lower is better.
+- **ValidLaTeX:** proportion of syntactically renderable outputs.
+- **Latency:** average inference time per image in the reported evaluation environment.
 
-| Model | Artifact | Hugging Face | Role |
-|---|---|---|---|
-| TAMER Original | HME100K pretrained checkpoint | External | Baseline for domain-gap analysis |
-| A0 phase1 | `outputs/phase1_a0_control_*` | External | Control adaptation baseline |
-| A3 phase1 | `outputs/phase1_a3_dual_seed7/checkpoints/` | External | Dual-adapter TAMER variant |
-| A0 RealFT | `outputs/real_ft_a0_control_*` | External | Real-data fine-tuning control |
-| A3 RealFT | `outputs/real_ft_a3_dual_seed7/checkpoints/` | [University-HMER-TAMER-A3-RealFT](https://huggingface.co/tuan3110/University-HMER-TAMER-A3-RealFT) | Fast specialist HMER model |
-| Uni-MuMER zero-shot | `phxember/Uni-MuMER-Qwen3.5-2B` | [Base model](https://huggingface.co/phxember/Uni-MuMER-Qwen3.5-2B) | VLM zero-shot baseline |
-| Uni-MuMER LoRA | `outputs/unimumer_lora_unsloth_real/best_adapter/` | [University-HMER-UniMuMER-LoRA](https://huggingface.co/tuan3110/University-HMER-UniMuMER-LoRA) | Main robust demo model |
+## Results
 
-Recommended external storage:
+### Main benchmark
 
-- Hugging Face Dataset repo for real classroom data.
-- Hugging Face Model repo, GitHub Release, or private cloud storage for checkpoints/adapters.
+| Model | Validation ExpRate | Validation TER | Blind ExpRate | Blind TER | Reported latency (blind) |
+|---|---:|---:|---:|---:|---:|
+| TAMER Original | 1.93% | 30.88% | 4.38% | 22.34% | 0.314 s/img |
+| A0 phase 1 | 5.02% | 18.39% | — | — | — |
+| A1 phase 1 | 3.47% | 18.66% | — | — | — |
+| A2 phase 1 | 3.47% | 17.40% | — | — | — |
+| A3 phase 1 | 5.02% | **16.88%** | — | — | — |
+| A0 RealFT | 53.28% | 5.80% | 69.34% | 3.05% | 0.301 s/img |
+| A3 RealFT | 56.37% | 5.45% | 71.17% | **2.92%** | **0.306 s/img** |
+| Uni-MuMER zero-shot P1 | 14.29% | 10.27% | 23.36% | 7.26% | 1.649 s/img |
+| **Uni-MuMER LoRA P1** | **64.48%** | **4.62%** | **74.82%** | 3.38% | 2.550 s/img |
 
-## Benchmark Results
+### Pairwise Blind-Test comparison
 
-### Validation
-
-| Model | ExpRate | TER | Latency |
-|---|---:|---:|---:|
-| TAMER Original | 1.93% | 30.88% | 0.323 s/img |
-| A0 phase1 | 5.02% | 18.39% | - |
-| A1 phase1 | 3.47% | 18.66% | - |
-| A2 phase1 | 3.47% | 17.40% | - |
-| A3 phase1 | 5.02% | 16.88% | - |
-| A0 RealFT | 53.28% | 5.80% | 0.293 s/img |
-| A3 RealFT | 56.37% | 5.45% | 0.299 s/img |
-| Uni-MuMER zero-shot P1 | 14.29% | 10.27% | 1.667 s/img |
-| Uni-MuMER LoRA | 64.48% | 4.62% | ~2.60 s/img |
-
-### Blind Test
-
-| Model | ExpRate | TER | Latency |
-|---|---:|---:|---:|
-| TAMER Original | 4.38% | 22.34% | 0.314 s/img |
-| A0 RealFT | 69.34% | 3.05% | 0.301 s/img |
-| A3 RealFT | 71.17% | 2.92% | 0.306 s/img |
-| Uni-MuMER zero-shot P1 | 23.36% | 7.26% | 1.649 s/img |
-| Uni-MuMER LoRA | 74.82% | 3.38% | 2.55 s/img |
-
-### Pairwise A3 RealFT vs Uni-MuMER LoRA on Blind Test
-
-| Category | Count |
+| A3 RealFT vs Uni-MuMER LoRA | Count |
 |---|---:|
-| both_correct | 167 |
-| unimumer_lora_only_correct | 38 |
-| a3_realft_only_correct | 28 |
-| unimumer_lora_closer | 13 |
-| a3_realft_closer | 18 |
-| same_wrong_distance | 10 |
+| Both correct | 167 |
+| Uni-MuMER LoRA only correct | 38 |
+| A3 RealFT only correct | 28 |
+| Uni-MuMER LoRA closer while both wrong | 13 |
+| A3 RealFT closer while both wrong | 18 |
+| Same wrong distance | 10 |
 
-Summary:
+### Source retention
 
-- TAMER-A3 RealFT is fast and strong on the collected classroom distribution.
-- Uni-MuMER LoRA is more robust and is selected as the main demo model.
-- The two models expose a practical trade-off between speed and generalization.
+| Model | HME100K full-test ExpRate | TER |
+|---|---:|---:|
+| TAMER Original | 69.52% | 3.82% |
+| A3 phase 1 | 62.99% | 5.68% |
 
-### Mini-OOD 20 Diagnostic
+Using the unrounded logged values, University12K adaptation reduces source ExpRate by **6.54 percentage points**, showing that intermediate adaptation improves the target domain but does not eliminate catastrophic forgetting.
 
-Uni-MuMER LoRA with P1 achieved **20/20 exact matches**, **0% TER**, and **100% ValidLaTeX** on Mini-OOD 20. This small set is used only as a post-selection diagnostic; it is not used for prompt selection or checkpoint selection and is not claimed as a general OOD benchmark.
+## Analysis / Ablation
 
-## Training
+### Adapter placement
 
-This repository keeps a single `requirements.txt` for readability. For full experiments, using separate TAMER and Uni-MuMER environments is still recommended because their CUDA/VLM dependencies can be heavy.
+A3 ties A0 on phase-1 ExpRate but obtains the lowest phase-1 TER. After RealFT, A3 exceeds the matched A0 control by:
 
-### TAMER environment
+- **+3.09 ExpRate points** on Validation;
+- **+1.83 ExpRate points** on Blind Test;
+- lower Blind TER: **2.92% vs 3.05%**.
+
+This supports dual adapter placement, while the modest margin also shows that most same-domain gain comes from RealFT rather than adapters alone.
+
+### Specialist versus VLM
+
+A3 RealFT is approximately **8.3× faster** than Uni-MuMER LoRA on Blind Test (`2.550 / 0.306`). It is strong on the collected distribution and has the lowest Blind TER. However, its fixed dictionary and limited training-layout diversity restrict unconstrained use.
+
+Uni-MuMER LoRA improves the matched zero-shot baseline by **50.19 ExpRate points on Validation** and **51.46 points on Blind Test**. It obtains the highest ExpRate and 100% ValidLaTeX, supporting its selection for live inference despite higher latency.
+
+### Split interpretation
+
+Blind Test scores exceed Validation scores because the category distributions differ. Validation contains more `log`, `ln`, and nested exponential expressions; Blind Test contains only `mixed_nested` samples and no `e^nested` category. The Blind Test is unseen but remains within the same collection protocol.
+
+### Mini-OOD diagnostic
+
+Uni-MuMER LoRA P1 recognizes **20/20** Mini-OOD samples with **0% TER** and **100% ValidLaTeX**. This set is a post-selection diagnostic only; it is too small to support a general OOD claim.
+
+## Demo
+
+The Android application and FastAPI deployment backend are maintained separately:
+
+**[University HMER Demo Application](https://github.com/Will36237/university-handwritten-math-recognition)**
+
+The workflow is:
+
+```text
+Capture / select image
+→ manually crop the formula
+→ validate the image
+→ run Uni-MuMER LoRA
+→ display and render LaTeX
+```
+
+The live application exposes Uni-MuMER LoRA only. TAMER-A3 remains a research specialist rather than a claim of unconstrained general recognition.
+
+## Installation & Usage
+
+### Install
 
 ```bash
 pip install -r requirements.txt
 pip install -e .
 ```
 
-Train selected TAMER configs:
+Separate TAMER and Uni-MuMER environments are recommended because their CUDA and VLM dependencies differ.
+
+### Train
 
 ```bash
+# TAMER A3 phase 1
 python train/train_university.py --config config/phase1_a3_dual_rtx3090.yaml
+
+# TAMER A3 RealFT
 python train/train_university.py --config config/real_ft_a3_dual_rtx3090.yaml
-```
 
-Important TAMER configs:
-
-```text
-config/hme100k.yaml
-config/university_baseline_rtx3090.yaml
-config/phase1_a0_control_rtx3090.yaml
-config/phase1_a1_encoder_rtx3090.yaml
-config/phase1_a2_decoder_rtx3090.yaml
-config/phase1_a3_dual_rtx3090.yaml
-config/real_ft_a0_control_rtx3090.yaml
-config/real_ft_a3_dual_rtx3090.yaml
-```
-
-### Uni-MuMER environment
-
-Use a separate environment from TAMER when running full Uni-MuMER LoRA training.
-
-```bash
-pip install -r requirements.txt
-```
-
-Train Uni-MuMER LoRA with Unsloth:
-
-```bash
+# Uni-MuMER LoRA with Unsloth
 python train/unimumer_lora_train_unsloth.py \
   --config config/unimumer_lora_real_unsloth.yaml
 ```
 
-Evaluate Uni-MuMER LoRA:
+### Evaluate
 
 ```bash
+# TAMER
+python eval/evaluate_manifest.py \
+  --checkpoint outputs/real_ft_a3_dual_seed7/checkpoints/<checkpoint>.ckpt \
+  --dictionary data/HME100k/dictionary.txt \
+  --manifest data/real/real_classroom_dataset_manual_removed/real_validation.csv \
+  --data-root data/real/real_classroom_dataset_manual_removed \
+  --output outputs/eval_tamer_a3_realft
+
+# Uni-MuMER LoRA
 python eval/unimumer_eval_manifest.py \
   --config config/unimumer_lora_real_unsloth.yaml \
   --split validation \
   --lora-path outputs/unimumer_lora_unsloth_real/best_adapter
 ```
 
-## ✅ TODO
+Model artifacts:
 
-- [x] Publish the real classroom dataset after privacy and license checks.
-- [x] Upload the selected TAMER checkpoint and Uni-MuMER LoRA adapter to Hugging Face.
-- [x] Package the Android demo and backend deployment instructions in a separate demo repository.
+- [TAMER-A3 RealFT](https://huggingface.co/tuan3110/University-HMER-TAMER-A3-RealFT)
+- [Uni-MuMER LoRA](https://huggingface.co/tuan3110/University-HMER-UniMuMER-LoRA)
+- [RealCalculus-1636 dataset](https://huggingface.co/datasets/tuan3110/University-HMER-RealClassroom)
 
-## 🙏 Acknowledgements
+## Repository Structure
 
-Thanks to the following projects:
+```text
+.
+|-- config/          # Selected experiment configurations
+|-- docs/            # Environment and run documentation
+|-- eval/            # TAMER and Uni-MuMER evaluation
+|-- example_data/    # Placeholder; full datasets are external
+|-- outputs/         # Placeholder; large outputs are external
+|-- preprocess/      # Dataset preparation and split utilities
+|-- scripts/         # Training/evaluation support scripts
+|-- tamer/           # TAMER architecture and adapters
+|-- train/           # TAMER and Uni-MuMER training entry points
+`-- tests/           # Lightweight regression tests
+```
 
-- [CoMER](https://github.com/Green-Wood/CoMER)
-- [PosFormer](https://github.com/SJTU-DeepVisionLab/PosFormer)
-- [TDv2](https://github.com/yqingli123/TDv2)
+## Limitations / Future Work
+
+### Limitations
+
+- RealCalculus-1636 contains only 1,636 images; writer, device, background, and layout diversity remain limited.
+- Integral and summation bounds are frequently placed diagonally or to the right. Vertically stacked display-style bounds are underrepresented.
+- Blind Test follows the same collection process as training data and is a same-domain evaluation.
+- TAMER uses a fixed HME100K dictionary and cannot reliably handle unseen notation.
+- ExpRate treats mathematically equivalent but token-different LaTeX strings as incorrect.
+- Validation and Blind Test have different category distributions.
+- Mini-OOD-20 is not a statistically representative OOD benchmark.
+- The demo rejects invalid files and poor crops, but does not provide a calibrated formula/non-formula classifier or reliable abstention mechanism.
+
+### Future work
+
+- collect more writers, devices, paper types, and camera conditions;
+- balance operator-bound layouts, especially vertically stacked integrals and summations;
+- add vocabulary expansion or open-vocabulary decoding for specialist HMER;
+- evaluate on a larger, independently collected external test set;
+- study replay and partial unfreezing to reduce RealFT forgetting;
+- add formula relevance classification, confidence calibration, and abstention;
+- evaluate mathematical equivalence in addition to exact token matching.
+
+## Citation
+
+If this repository, dataset, or released models support your work, please cite:
+
+```bibtex
+@misc{tuan2026universityhmer,
+  title        = {University HMER: Real-World Handwritten University Calculus Recognition},
+  author       = {Ha Manh Tuan and Vo Minh Nhat and Lam Gia Thai},
+  year         = {2026},
+  howpublished = {GitHub repository},
+  url          = {https://github.com/tuanfptu/SU26AI46_GSU08-Capstone-UniversityHMER}
+}
+```
+
+Please also cite the relevant upstream works and datasets used in your experiment:
+
 - [TAMER](https://github.com/qingzhenduyu/TAMER)
-- [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)
-- [MathNet](https://github.com/felix-schmitt/MathNet)
 - [Uni-MuMER](https://github.com/BFlameSwift/Uni-MuMER)
+- [MathWriting 2024](https://arxiv.org/abs/2404.10690)
 - [Unsloth](https://github.com/unslothai/unsloth)
+
+## Acknowledgements
+
+This work builds on TAMER, Uni-MuMER, MathWriting, Unsloth, CoMER, PosFormer, TDv2, LLaMA-Factory, and MathNet.
+
+## License
+
+See [LICENSE](LICENSE). Datasets, upstream checkpoints, and third-party artifacts remain subject to their respective licenses and terms.
