@@ -1,7 +1,5 @@
 # University HMER
 
-**Real-World Handwritten University Calculus Recognition with TAMER Domain Adaptation and Uni-MuMER LoRA**
-
 [![Dataset](https://img.shields.io/badge/Dataset-Hugging%20Face-yellow)](https://huggingface.co/datasets/tuan3110/University-HMER-RealClassroom)
 [![TAMER-A3](https://img.shields.io/badge/Model-TAMER--A3-blue)](https://huggingface.co/tuan3110/University-HMER-TAMER-A3-RealFT)
 [![Uni--MuMER LoRA](https://img.shields.io/badge/Model-Uni--MuMER%20LoRA-purple)](https://huggingface.co/tuan3110/University-HMER-UniMuMER-LoRA)
