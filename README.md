@@ -1,4 +1,8 @@
-# University HMER
+# Bridging the Modality Gap in Mathematical Handwriting Recognition Using Qwen3-VL
+
+**Official capstone title — SU26AI46_GSU08**
+
+Real-world university-calculus HMER with TAMER domain adaptation and Uni-MuMER Qwen3.5-2B LoRA.
 
 [![Dataset](https://img.shields.io/badge/Dataset-Hugging%20Face-yellow)](https://huggingface.co/datasets/tuan3110/University-HMER-RealClassroom)
 [![TAMER-A3](https://img.shields.io/badge/Model-TAMER--A3-blue)](https://huggingface.co/tuan3110/University-HMER-TAMER-A3-RealFT)
@@ -11,7 +15,9 @@ Research code and reproducibility materials for the FPT University capstone proj
 
 ## Overview
 
-This project studies handwritten mathematical expression recognition (HMER) for university calculus captured under real classroom conditions. It connects three domains:
+This project studies handwritten mathematical expression recognition (HMER) for university calculus captured under real classroom conditions. The registered title reflects the project's initial [`Qwen3-VL-HMER`](https://github.com/tuanfptu/Qwen3-VL-HMER) direction. After comparative backbone analysis, the final VLM branch adopted [`phxember/Uni-MuMER-Qwen3.5-2B`](https://huggingface.co/phxember/Uni-MuMER-Qwen3.5-2B). All Uni-MuMER results in this repository therefore refer explicitly to **Uni-MuMER Qwen3.5-2B**, not to the earlier Qwen3-VL prototype.
+
+The study connects three data domains:
 
 ```text
 HME100K-pretrained TAMER
@@ -27,6 +33,20 @@ Two complementary model families are investigated:
 - **Uni-MuMER LoRA:** a parameter-efficient vision-language model selected for the live application because it is more robust to unconstrained input.
 
 The goal is not to claim one universally superior model, but to quantify the trade-off between **same-domain accuracy, source retention, inference speed, and practical generalization**.
+
+The model-development path is:
+
+```text
+Qwen3-VL-HMER initial direction
+        ↓
+specialist TAMER domain-gap and adapter study
+        ↓
+Uni-MuMER Qwen3.5-2B backbone selection
+        ↓
+prompt selection on Real Validation
+        ↓
+LoRA adaptation and Android deployment
+```
 
 ## Problem / Motivation
 
@@ -81,7 +101,19 @@ The gate initializes the adapter near an identity mapping. The bottleneck limits
 
 ### Uni-MuMER LoRA
 
-The VLM branch adapts [`phxember/Uni-MuMER-Qwen3.5-2B`](https://huggingface.co/phxember/Uni-MuMER-Qwen3.5-2B) using LoRA:
+#### Why Uni-MuMER Qwen3.5-2B?
+
+The final backbone was selected from the comparative results reported with Uni-MuMER rather than merely because it was newer. The Qwen3.5-2B-based **“This Model”** configuration achieved the highest mean ExpRate (**73.09%**) across eight reported HMER test sets and the best result on five of them. Other variants remained stronger on individual datasets, so the claim is **best average trade-off**, not universal superiority.
+
+| Backbone/configuration | Average ExpRate | Selection relevance |
+|---|---:|---|
+| Uni-MuMER-3B | 72.19% | Strong specialist VLM baseline |
+| **Uni-MuMER Qwen3.5-2B (“This Model”)** | **73.09%** | Highest reported average; selected backbone |
+| Qwen3.5-4B | 71.60% | Larger model without a higher average |
+| Qwen3-VL-2B | 72.49% | Initial project family and competitive 2B baseline |
+| Qwen3-VL-4B | 72.11% | Larger Qwen3-VL comparison |
+
+At 2B scale, the selected backbone also offered a practical accuracy–compute balance for LoRA adaptation on the available 24 GB RTX 3090. The VLM branch adapts [`phxember/Uni-MuMER-Qwen3.5-2B`](https://huggingface.co/phxember/Uni-MuMER-Qwen3.5-2B) using LoRA:
 
 - rank `8`, alpha `16`;
 - attention targets: `q_proj`, `k_proj`, `v_proj`, `o_proj`;
@@ -155,10 +187,16 @@ P2 yields three more exact matches than P1, but P1 has materially lower TER, hig
 
 ### Metrics
 
-- **ExpRate:** exact token-sequence match; higher is better.
-- **TER:** token edit distance divided by the ground-truth token count; lower is better.
-- **ValidLaTeX:** proportion of syntactically renderable outputs.
-- **Latency:** average inference time per image in the reported evaluation environment.
+- **Exact Match / Expression Recognition Rate (ExpRate):** proportion of predictions whose normalized token sequence exactly matches the reference.
+- **Token Error Rate (TER):** corpus-level token edit distance divided by the total number of reference tokens; lower is better.
+- **Token Accuracy:** reported as `1 − TER` at corpus level to make token correctness easier to interpret.
+- **Valid LaTeX Rate:** proportion of outputs accepted by the project’s LaTeX-validity checker.
+- **Category ExpRate:** Exact Match separated by expression category to expose category-specific failure modes.
+- **Length-bucket ExpRate:** Exact Match grouped by normalized reference length to measure degradation on longer expressions.
+- **Latency:** average end-to-end inference time per image in the stated hardware and decoding environment.
+- **95% Wilson interval:** uncertainty interval for binomial proportions such as ExpRate and Valid LaTeX Rate. Wilson intervals are preferred to normal approximations for small or extreme proportions.
+
+Category and length-bucket results are analysis metrics rather than substitutes for the fixed-split aggregate results. Exact Match is intentionally strict and does not treat mathematically equivalent but token-different LaTeX strings as equal.
 
 ## Results
 
@@ -175,6 +213,20 @@ P2 yields three more exact matches than P1, but P1 has materially lower TER, hig
 | A3 RealFT | 56.37% | 5.45% | 71.17% | **2.92%** | **0.306 s/img** |
 | Uni-MuMER zero-shot P1 | 14.29% | 10.27% | 23.36% | 7.26% | 1.649 s/img |
 | **Uni-MuMER LoRA P1** | **64.48%** | **4.62%** | **74.82%** | 3.38% | 2.550 s/img |
+
+### Blind-Test ExpRate uncertainty
+
+The Blind Test contains 274 fixed samples. The intervals below are 95% Wilson score intervals computed from the exact correct-count totals.
+
+| Model | Correct / 274 | Blind ExpRate | 95% Wilson interval |
+|---|---:|---:|---:|
+| TAMER Original | 12 | 4.38% | [2.52%, 7.50%] |
+| A0 RealFT | 190 | 69.34% | [63.65%, 74.50%] |
+| A3 RealFT | 195 | 71.17% | [65.54%, 76.21%] |
+| Uni-MuMER zero-shot P1 | 64 | 23.36% | [18.74%, 28.71%] |
+| **Uni-MuMER LoRA P1** | **205** | **74.82%** | **[69.36%, 79.59%]** |
+
+Because the A3 RealFT and Uni-MuMER LoRA intervals overlap, the observed ExpRate difference alone is not presented as proof of statistical superiority. Model selection also considers TER, validity, pairwise outcomes, latency, and behavior under less-controlled inputs.
 
 ### Pairwise Blind-Test comparison
 
@@ -334,7 +386,7 @@ If this repository, dataset, or released models support your work, please cite:
 
 ```bibtex
 @misc{tuan2026universityhmer,
-  title        = {University HMER: Real-World Handwritten University Calculus Recognition},
+  title        = {Bridging the Modality Gap in Mathematical Handwriting Recognition Using Qwen3-VL},
   author       = {Ha Manh Tuan and Vo Minh Nhat and Lam Gia Thai},
   year         = {2026},
   howpublished = {GitHub repository},
