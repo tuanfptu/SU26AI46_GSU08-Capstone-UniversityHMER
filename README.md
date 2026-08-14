@@ -1,5 +1,3 @@
-# Bridging the Modality Gap in Mathematical Handwriting Recognition Using Qwen3-VL
-
 > Registered capstone title — SU26AI46_GSU08
 
 Research on real-world university-calculus HMER, beginning with a Qwen3-VL-based pipeline and subsequently extending to TAMER domain adaptation and Uni-MuMER Qwen3.5-2B LoRA.
